@@ -48,6 +48,27 @@ class Mutation:
 
 
 
+    @strawberry.mutation
+    def verify_otp(self, info: Info, email: str, otp: str) -> str:
+        """
+        Verify the OTP sent to the user's email and activate the account.
+        """
+        try:
+            user = CustomUser.objects.get(email=email)
+            if user.is_otp_valid(otp):
+                user.is_active = True
+                user.otp = None
+                user.otp_expiration = None
+                user.save()
+                return "OTP verified successfully. Account activated."
+            else:
+                raise Exception("Invalid or expired OTP.")
+        except CustomUser.DoesNotExist:
+            raise Exception("User not found.")
+
+
+
+
 
     
     # Minimal Query type (placeholder)

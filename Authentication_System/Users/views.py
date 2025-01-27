@@ -6,6 +6,7 @@ import json
 from django.test import RequestFactory
 from Users.models import CustomUser
 from .schema import schema
+from .serializers import LoginSerializer
 
 
 @csrf_exempt
@@ -51,6 +52,41 @@ def register_user(request):
             return JsonResponse({"error": str(e)}, status=500)
 
     return JsonResponse({"error": "POST method required"}, status=405)
+
+
+@csrf_exempt
+def verify_otp(request):
+    if request.method == "POST":
+        try:
+            body = json.loads(request.body)
+            email = body.get("email")
+            otp = body.get("otp")
+
+            if not email or not otp:
+                return JsonResponse({"error": "Email and OTP are required."}, status=400)
+
+            try:
+                user = CustomUser.objects.get(email=email)
+            except CustomUser.DoesNotExist:
+                return JsonResponse({"error": "User not found."}, status=404)
+
+            if user.is_otp_valid(otp):
+                user.is_active = True
+                user.otp = None
+                user.otp_expiration = None
+                user.is_email_verified = True
+                user.save()
+                return JsonResponse({"message": "OTP verified successfully. Account activated."}, status=200)
+            else:
+                return JsonResponse({"error": "Invalid or expired OTP."}, status=400)
+
+        except json.JSONDecodeError:
+            return JsonResponse({"error": "Invalid JSON data."}, status=400)
+        except Exception as e:
+            return JsonResponse({"error": str(e)}, status=500)
+
+    return JsonResponse({"error": "POST method required"}, status=405)
+
 
 
 
