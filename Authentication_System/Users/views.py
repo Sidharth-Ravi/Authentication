@@ -91,4 +91,22 @@ def verify_otp(request):
 
 
 
+@csrf_exempt
+def login(request):
+    if request.method == "POST":
+        try:
+            data = json.loads(request.body)
+            serializer = LoginSerializer(data=data)
+
+            if serializer.is_valid():
+                tokens = serializer.get_tokens()
+                return JsonResponse(tokens, status=200)
+            return JsonResponse(serializer.errors, status=400)
+
+        except json.JSONDecodeError:
+            return JsonResponse({"error": "Invalid JSON format."}, status=400)
+
+    return JsonResponse({"error": "POST method required"}, status=405)
+
+
 
