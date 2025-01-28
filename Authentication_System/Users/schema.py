@@ -69,6 +69,38 @@ class Mutation:
 
 
 
+    @strawberry.mutation
+    def forgot_password(email: str) -> str:
+
+
+        user = CustomUser.objects.get(email=email)
+        otp = generate_otp()
+        otp_expiration = now() + timedelta(minutes=30)
+
+        message = f"""
+            Hi {user.email},
+                Here is your password reset otp: {otp}
+                Use this token to reset your password. If you didn't request this, please ignore this email.
+                """ 
+
+        # Send verification email
+        send_mail(
+            subject="OTP for resetting password",
+            message = message,
+            from_email=settings.DEFAULT_FROM_EMAIL,
+            recipient_list=[email],
+        )
+
+        # Save OTP in the user (you might want to handle this more securely)
+        user.otp = otp
+        user.otp_expiration = otp_expiration
+        user.save()
+
+        return "Link for resetting password has been send successfully"
+
+
+
+
 
     
     # Minimal Query type (placeholder)
@@ -79,3 +111,4 @@ class Query:
     
 # Create the schema
 schema = strawberry.Schema(query=Query, mutation=Mutation)
+

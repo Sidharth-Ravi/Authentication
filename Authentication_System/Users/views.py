@@ -110,3 +110,63 @@ def login(request):
 
 
 
+
+
+
+from django.core.mail import send_mail
+from rest_framework.views import APIView
+from rest_framework.response import Response
+from rest_framework import status
+from Users.models import CustomUser
+from django.utils.crypto import get_random_string
+from django.conf import settings
+from django.http import JsonResponse
+from django.test import RequestFactory
+from strawberry.django.views import GraphQLView
+from .schema import schema
+import json
+
+
+class ForgotPassword(APIView):
+    def post(self, request):
+        try:
+            # Parse the request body
+            body = request.data
+            
+            
+            # Extract email from the request body
+            email = body.get("email")
+            if not email:
+                return Response({"error": "Email is required."}, status=status.HTTP_400_BAD_REQUEST)
+
+            # Check if the user exists
+            try:
+                user = CustomUser.objects.get(email=email)
+            except CustomUser.DoesNotExist:
+                return Response({"error": "User with this email does not exist."}, status=status.HTTP_404_NOT_FOUND)
+            
+            query = """
+                mutation($email: String!) {
+                    forgotPassword(email: $email)
+                }
+            """
+            variables = {
+                "email": body.get("email"),
+            }
+
+            rf = RequestFactory()
+            graphql_request_data = {
+                "query": query,
+                "variables": variables,
+            }
+            req = rf.post('/api/forgotPassword/', json.dumps(graphql_request_data), content_type='application/json')
+
+            # Create a GraphQL view to process the request
+            graphql_view = GraphQLView.as_view(schema=schema)
+            response = graphql_view(req)
+
+            # Return the response as a JSON object
+            return Response({"message": "Password reset token sent to your email."}, status=status.HTTP_200_OK)
+
+        except Exception as e:
+            return Response({"error": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)

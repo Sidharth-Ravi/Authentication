@@ -77,3 +77,43 @@ class TestMutation(unittest.TestCase):
         mutation = Mutation()
         with self.assertRaises(Exception) as context:
             mutation.verify_otp(info=None, email="      ", otp="123456")
+
+
+
+
+
+
+
+import unittest
+from unittest.mock import patch, MagicMock
+from Authentication_System.Users.schema import Mutation
+
+class TestMutation(unittest.TestCase):
+
+    @patch('Authentication_System.Users.schema.CustomUser')
+    @patch('Authentication_System.Users.schema.send_mail')
+    @patch('Authentication_System.Users.schema.generate_otp')
+    def test_forgot_password_user_exists(self, mock_generate_otp, mock_send_mail, MockCustomUser):
+        mock_generate_otp.return_value = '123456'
+        mock_user = MagicMock()
+        MockCustomUser.objects.get.return_value = mock_user
+
+        mutation = Mutation()
+        response = mutation.forgot_password(email="test@example.com")
+
+        mock_user.save.assert_called_once()
+        mock_send_mail.assert_called_once()
+        self.assertEqual(response, "Link for resetting password has been send successfully")
+
+    @patch('Authentication_System.Users.schema.CustomUser')
+    def test_forgot_password_user_not_found(self, MockCustomUser):
+        MockCustomUser.objects.get.side_effect = MockCustomUser.DoesNotExist
+
+        mutation = Mutation()
+        with self.assertRaises(Exception) as context:
+            mutation.forgot_password(email="nonexistent@example.com")
+
+        self.assertEqual(str(context.exception), "User not found.")
+
+if __name__ == '__main__':
+    unittest.main()
