@@ -102,6 +102,29 @@ class Mutation:
 
 
 
+
+    @strawberry.mutation
+    def update_profile(self, first_name: str, last_name: str, email: str) -> str:
+
+        try:
+            user = CustomUser.objects.get(email=email)
+            user.first_name = first_name
+            user.last_name = last_name
+            user.save()
+            return "Profile updated successfully"
+        except CustomUser.DoesNotExist:
+            raise Exception("User not found.")
+
+
+
+
+
+
+
+
+
+
+
     
     # Minimal Query type (placeholder)
 @strawberry.type

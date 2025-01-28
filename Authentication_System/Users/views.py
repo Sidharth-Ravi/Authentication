@@ -170,3 +170,121 @@ class ForgotPassword(APIView):
 
         except Exception as e:
             return Response({"error": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+
+
+
+
+
+
+from strawberry.django.views import GraphQLView
+from django.http import JsonResponse
+from django.views.decorators.csrf import csrf_exempt
+import json
+from django.test import RequestFactory
+from Users.models import CustomUser
+from .schema import schema
+from rest_framework.views import APIView
+from rest_framework.response import Response
+from rest_framework import status
+from rest_framework.permissions import IsAuthenticated
+from rest_framework_simplejwt.tokens import OutstandingToken, BlacklistedToken
+from .serializers import LoginSerializer
+from django.contrib.auth.hashers import check_password
+
+class ResetPasswordView(APIView):
+    def post(self, request):
+        email = request.data.get('email')
+        current_password = request.data.get('current_password')
+        new_password = request.data.get('new_password')
+
+        try:
+            user = CustomUser.objects.get(email=email)
+            if not check_password(current_password, user.password):
+                return Response({"error": "Invalid current password"}, status=status.HTTP_400_BAD_REQUEST)
+            
+            if check_password(new_password, user.password):
+                return Response({"error": "New password cannot be the same as the current password."},
+                                status=status.HTTP_400_BAD_REQUEST)
+            
+            user.set_password(new_password) 
+            user.save()
+            return Response({"message": "Password set successfully"}, status=status.HTTP_200_OK)
+        
+        except CustomUser.DoesNotExist:
+            return Response({"error": "Invalid email"}, status=status.HTTP_404_NOT_FOUND)
+        
+
+
+
+
+
+
+
+
+
+
+from rest_framework.permissions import IsAuthenticated
+from rest_framework.serializers import ModelSerializer
+from django.contrib.auth.models import User
+from strawberry.django.views import GraphQLView
+from django.http import JsonResponse
+from django.views.decorators.csrf import csrf_exempt
+import json
+from django.test import RequestFactory
+from Users.models import CustomUser
+from .schema import schema
+from rest_framework.views import APIView
+from rest_framework.response import Response
+from rest_framework import status
+from rest_framework.permissions import IsAuthenticated
+from rest_framework_simplejwt.tokens import OutstandingToken, BlacklistedToken
+from .serializers import LoginSerializer
+
+@csrf_exempt
+def UpdateProfileView(request):
+    if request.method == "PUT":
+        try:
+            # Parse the request body as JSON
+            body = json.loads(request.body)
+
+            # Construct the GraphQL mutation query
+            query = """
+                mutation($first_name: String!, $last_name: String!, $email: String!) {
+                    updateProfile(firstName: $first_name, lastName: $last_name, email: $email)
+                }
+            """
+            variables = {
+                "first_name": body.get("first_name"),
+                "last_name": body.get("last_name"),
+                "email": body.get("email"),
+            }
+
+            if not any(variables.values()):
+                return JsonResponse({"error": "At least one field (first_name, last_name, email) is required."}, status=400)
+
+            # Create a mock POST request using RequestFactory
+            rf = RequestFactory()
+            graphql_request_data = {
+                "query": query,
+                "variables": variables,
+            }
+            req = rf.post('/api/update-profile/', json.dumps(graphql_request_data), content_type='application/json')
+
+            # Create a GraphQL view to process the request
+            graphql_view = GraphQLView.as_view(schema=schema)
+            response = graphql_view(req)
+
+            # Return the response as a JSON object
+            return JsonResponse(json.loads(response.content), safe=False)
+
+        except json.JSONDecodeError:
+            return JsonResponse({"error": "Invalid JSON format."}, status=400)
+        except Exception as e:
+            return JsonResponse({"error": str(e)}, status=500)
+
+    return JsonResponse({"error": "PUT method required"}, status=405)
+
+
+
+

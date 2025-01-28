@@ -117,3 +117,110 @@ class TestMutation(unittest.TestCase):
 
 if __name__ == '__main__':
     unittest.main()
+
+
+
+
+
+
+
+    import json
+from django.test import TestCase, Client
+from django.urls import reverse
+from Users.models import CustomUser
+from rest_framework import status
+from django.contrib.auth.hashers import make_password
+
+class TestResetPasswordView(TestCase):
+    def setUp(self):
+        self.client = Client()
+        self.url = reverse('reset_password')
+        self.user = CustomUser.objects.create(
+            email="test@example.com",
+            password=make_password("current_password")
+        )
+
+    def test_reset_password_success(self):
+        data = {
+            "email": "test@example.com",
+            "current_password": "current_password",
+            "new_password": "new_password123"
+        }
+        response = self.client.post(self.url, json.dumps(data), content_type="application/json")
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(response.json(), {"message": "Password set successfully"})
+
+    def test_reset_password_invalid_current_password(self):
+        data = {
+            "email": "test@example.com",
+            "current_password": "wrong_password",
+            "new_password": "new_password123"
+        }
+        response = self.client.post(self.url, json.dumps(data), content_type="application/json")
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertEqual(response.json(), {"error": "Invalid current password"})
+
+    def test_reset_password_same_as_current(self):
+        data = {
+            "email": "test@example.com",
+            "current_password": "current_password",
+            "new_password": "current_password"
+        }
+        response = self.client.post(self.url, json.dumps(data), content_type="application/json")
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertEqual(response.json(), {"error": "New password cannot be the same as the current password."})
+
+    def test_reset_password_invalid_email(self):
+        data = {
+            "email": "invalid@example.com",
+            "current_password": "current_password",
+            "new_password": "new_password123"
+        }
+        response = self.client.post(self.url, json.dumps(data), content_type="application/json")
+        self.assertEqual(response.status_code, status.HTTP_404_NOT_FOUND)
+        self.assertEqual(response.json(), {"error": "Invalid email"})
+
+
+
+
+
+
+
+
+import unittest
+from unittest.mock import patch, MagicMock
+from Authentication_System.Users.schema import Mutation
+
+class TestMutation(unittest.TestCase):
+
+    @patch('Authentication_System.Users.schema.CustomUser')
+    def test_update_profile_success(self, MockCustomUser):
+        mock_user = MagicMock()
+        MockCustomUser.objects.get.return_value = mock_user
+
+        mutation = Mutation()
+        response = mutation.update_profile(first_name="John", last_name="Doe", email="test@example.com")
+
+        mock_user.save.assert_called_once()
+        self.assertEqual(response, "Profile updated successfully")
+
+    @patch('Authentication_System.Users.schema.CustomUser')
+    def test_update_profile_user_not_found(self, MockCustomUser):
+        MockCustomUser.objects.get.side_effect = MockCustomUser.DoesNotExist
+
+        mutation = Mutation()
+        with self.assertRaises(Exception) as context:
+            mutation.update_profile(first_name="John", last_name="Doe", email="nonexistent@example.com")
+
+        self.assertEqual(str(context.exception), "User not found.")
+
+if __name__ == '__main__':
+    unittest.main()
+
+
+
+
+
+
+
+    
