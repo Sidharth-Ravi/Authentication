@@ -288,3 +288,40 @@ def UpdateProfileView(request):
 
 
 
+
+
+
+
+
+from strawberry.django.views import GraphQLView
+from django.http import JsonResponse
+from django.views.decorators.csrf import csrf_exempt
+import json
+from django.test import RequestFactory
+from Users.models import CustomUser
+from .schema import schema
+from rest_framework.views import APIView
+from rest_framework.response import Response
+from rest_framework import status
+from rest_framework.permissions import IsAuthenticated
+from rest_framework_simplejwt.tokens import OutstandingToken, BlacklistedToken
+from .serializers import LoginSerializer
+from rest_framework_simplejwt.tokens import RefreshToken
+
+@csrf_exempt
+def logout(request):
+    permission_classes = [IsAuthenticated]
+    try:
+        # Blacklist the latest token for the user
+        body = json.loads(request.body)
+        email = body.get('email')
+        user = CustomUser.objects.get(email=email)
+        outstanding_tokens = OutstandingToken.objects.filter(user=user)
+        latest_token = outstanding_tokens.latest('created_at')
+        BlacklistedToken.objects.create(token=latest_token)
+        return JsonResponse({"message": "Logout successful"}, status=status.HTTP_200_OK)
+    except CustomUser.DoesNotExist: 
+        return JsonResponse({"error": "User not found"}, status=status.HTTP_404_NOT_FOUND)
+    except Exception as e:
+        return JsonResponse({"error": str(e)}, status=status.HTTP_400_BAD_REQUEST)
+

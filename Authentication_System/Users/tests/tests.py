@@ -223,4 +223,38 @@ if __name__ == '__main__':
 
 
 
-    
+import json
+from django.test import TestCase, Client
+from django.urls import reverse
+from Users.models import CustomUser
+from rest_framework_simplejwt.tokens import OutstandingToken, BlacklistedToken
+from django.utils import timezone
+
+class TestLogoutView(TestCase):
+    def setUp(self):
+        self.client = Client()
+        self.url = reverse('logout')
+        self.user = CustomUser.objects.create(email="test@example.com")
+        self.token = OutstandingToken.objects.create(user=self.user, token="testtoken", created_at=timezone.now())
+
+    def test_logout_success(self):
+        data = {
+            "email": "test@example.com"
+        }
+        response = self.client.post(self.url, json.dumps(data), content_type="application/json")
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.json(), {"message": "Logout successful"})
+        self.assertTrue(BlacklistedToken.objects.filter(token=self.token).exists())
+
+    def test_logout_user_not_found(self):
+        data = {
+            "email": "nonexistent@example.com"
+        }
+        response = self.client.post(self.url, json.dumps(data), content_type="application/json")
+        self.assertEqual(response.status_code, 404)
+        self.assertEqual(response.json(), {"error": "User not found"})
+
+    def test_logout_invalid_json(self):
+        response = self.client.post(self.url, "invalid json", content_type="application/json")
+        self.assertEqual(response.status_code, 400)
+        self.assertEqual(response.json(), {"error": "Expecting value: line 1 column 1 (char 0)"})
