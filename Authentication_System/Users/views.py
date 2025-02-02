@@ -44,11 +44,16 @@ def register_user(request):
             response = graphql_view(req)
 
             # Return the response as a JSON object
+            if "email already exists" in str(response.content).lower():
+              return JsonResponse({"error": "Email already exists."}, status=400)
+     
             return JsonResponse(json.loads(response.content), safe=False)
 
         except json.JSONDecodeError:
             return JsonResponse({"error": "Invalid JSON format."}, status=400)
         except Exception as e:
+            if "Email already exists" in str(e).lower():
+                return JsonResponse({"error": "Email already exists."}, status=400)
             return JsonResponse({"error": str(e)}, status=500)
 
     return JsonResponse({"error": "POST method required"}, status=405)
@@ -324,4 +329,3 @@ def logout(request):
         return JsonResponse({"error": "User not found"}, status=status.HTTP_404_NOT_FOUND)
     except Exception as e:
         return JsonResponse({"error": str(e)}, status=status.HTTP_400_BAD_REQUEST)
-

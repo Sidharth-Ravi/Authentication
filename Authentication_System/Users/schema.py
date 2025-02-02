@@ -20,7 +20,7 @@ class Mutation:
     def register_user(self, email: str, password: str) -> str:
         # Check if the email already exists
         if CustomUser.objects.filter(email=email).exists():
-            raise Exception("Email already exists.")
+            return "Email already exists."
 
         # Create user and generate OTP
         user = CustomUser.objects.create_user(email=email, password=password)
@@ -134,4 +134,3 @@ class Query:
     
 # Create the schema
 schema = strawberry.Schema(query=Query, mutation=Mutation)
-
