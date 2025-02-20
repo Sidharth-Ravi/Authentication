@@ -1,12 +1,28 @@
 from django.shortcuts import render
 from strawberry.django.views import GraphQLView
-from django.http import JsonResponse
 from django.views.decorators.csrf import csrf_exempt
 import json
+from .schema import schema
+from django.contrib.auth import authenticate
+from rest_framework_simplejwt.tokens import RefreshToken
+from django.core.mail import send_mail
+from rest_framework.views import APIView
+from django.utils.crypto import get_random_string
+from django.conf import settings
+from django.http import JsonResponse
 from django.test import RequestFactory
 from Users.models import CustomUser
-from .schema import schema
+from rest_framework.response import Response
+from rest_framework_simplejwt.tokens import OutstandingToken, BlacklistedToken
 from .serializers import LoginSerializer
+from django.contrib.auth.hashers import check_password
+from rest_framework.permissions import IsAuthenticated
+from rest_framework.serializers import ModelSerializer
+from django.contrib.auth.models import User
+from rest_framework import status
+from .serializers import LoginSerializer
+from rest_framework.views import APIView
+from rest_framework_simplejwt.tokens import RefreshToken
 
 
 @csrf_exempt
@@ -96,40 +112,49 @@ def verify_otp(request):
 
 
 
+
+
 @csrf_exempt
 def login(request):
     if request.method == "POST":
         try:
             data = json.loads(request.body)
-            serializer = LoginSerializer(data=data)
+            email = data.get("email")
+            password = data.get("password")
 
-            if serializer.is_valid():
-                tokens = serializer.get_tokens()
-                return JsonResponse(tokens, status=200)
-            return JsonResponse(serializer.errors, status=400)
+            # Validate required fields
+            errors = {}
+            if not email:
+                errors["email"] = ["This field is required."]
+            if not password:
+                errors["password"] = ["This field is required."]
+
+            if errors:
+                return JsonResponse(errors, status=status.HTTP_400_BAD_REQUEST)
+
+            # Authenticate the user
+            user = authenticate(request, email=email, password=password)
+
+            if user is not None:
+                # Generate tokens
+                refresh = RefreshToken.for_user(user)
+                tokens = {
+                    "access": str(refresh.access_token),
+                    "refresh": str(refresh)
+                }
+                return JsonResponse(tokens, status=status.HTTP_200_OK)
+            else:
+                return JsonResponse({"non_field_errors": ["Invalid email or password."]}, status=status.HTTP_400_BAD_REQUEST)
 
         except json.JSONDecodeError:
-            return JsonResponse({"error": "Invalid JSON format."}, status=400)
+            return JsonResponse({"error": "Invalid JSON format."}, status=status.HTTP_400_BAD_REQUEST)
 
-    return JsonResponse({"error": "POST method required"}, status=405)
-
-
+    return JsonResponse({"error": "POST method required."}, status=status.HTTP_405_METHOD_NOT_ALLOWED)
 
 
 
 
-from django.core.mail import send_mail
-from rest_framework.views import APIView
-from rest_framework.response import Response
-from rest_framework import status
-from Users.models import CustomUser
-from django.utils.crypto import get_random_string
-from django.conf import settings
-from django.http import JsonResponse
-from django.test import RequestFactory
-from strawberry.django.views import GraphQLView
-from .schema import schema
-import json
+
 
 
 class ForgotPassword(APIView):
@@ -182,20 +207,7 @@ class ForgotPassword(APIView):
 
 
 
-from strawberry.django.views import GraphQLView
-from django.http import JsonResponse
-from django.views.decorators.csrf import csrf_exempt
-import json
-from django.test import RequestFactory
-from Users.models import CustomUser
-from .schema import schema
-from rest_framework.views import APIView
-from rest_framework.response import Response
-from rest_framework import status
-from rest_framework.permissions import IsAuthenticated
-from rest_framework_simplejwt.tokens import OutstandingToken, BlacklistedToken
-from .serializers import LoginSerializer
-from django.contrib.auth.hashers import check_password
+
 
 class ResetPasswordView(APIView):
     def post(self, request):
@@ -229,22 +241,7 @@ class ResetPasswordView(APIView):
 
 
 
-from rest_framework.permissions import IsAuthenticated
-from rest_framework.serializers import ModelSerializer
-from django.contrib.auth.models import User
-from strawberry.django.views import GraphQLView
-from django.http import JsonResponse
-from django.views.decorators.csrf import csrf_exempt
-import json
-from django.test import RequestFactory
-from Users.models import CustomUser
-from .schema import schema
-from rest_framework.views import APIView
-from rest_framework.response import Response
-from rest_framework import status
-from rest_framework.permissions import IsAuthenticated
-from rest_framework_simplejwt.tokens import OutstandingToken, BlacklistedToken
-from .serializers import LoginSerializer
+
 
 @csrf_exempt
 def UpdateProfileView(request):
@@ -298,20 +295,6 @@ def UpdateProfileView(request):
 
 
 
-from strawberry.django.views import GraphQLView
-from django.http import JsonResponse
-from django.views.decorators.csrf import csrf_exempt
-import json
-from django.test import RequestFactory
-from Users.models import CustomUser
-from .schema import schema
-from rest_framework.views import APIView
-from rest_framework.response import Response
-from rest_framework import status
-from rest_framework.permissions import IsAuthenticated
-from rest_framework_simplejwt.tokens import OutstandingToken, BlacklistedToken
-from .serializers import LoginSerializer
-from rest_framework_simplejwt.tokens import RefreshToken
 
 @csrf_exempt
 def logout(request):

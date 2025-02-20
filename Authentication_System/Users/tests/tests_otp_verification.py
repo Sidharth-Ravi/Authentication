@@ -11,14 +11,14 @@ class TestVerifyOtpView(TestCase):
         self.client = Client()
         self.url = reverse('verify_otp')
         self.user = CustomUser.objects.create(
-            email="test@example.com",
+            email="test+11@example.com",
             otp="123456",
             otp_expiration=timezone.now() + timedelta(minutes=30)
         )
 
     def test_verify_otp_success(self):
         data = {
-            "email": "test@example.com",
+            "email": "test+11@example.com",
             "otp": "123456"
         }
         response = self.client.post(self.url, json.dumps(data), content_type="application/json")
@@ -36,7 +36,7 @@ class TestVerifyOtpView(TestCase):
 
     def test_verify_otp_invalid_otp(self):
         data = {
-            "email": "test@example.com",
+            "email": "test+11@example.com",
             "otp": "000000"
         }
         response = self.client.post(self.url, json.dumps(data), content_type="application/json")
